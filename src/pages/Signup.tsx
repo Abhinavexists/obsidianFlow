@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Github, Mail, Loader2, Google } from 'lucide-react';
+import { BookOpen, Github, Mail, Loader2, GanttChart } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -133,7 +133,7 @@ const Signup: React.FC = () => {
               disabled={isSigningUp}
               onClick={handleGoogleLogin}
             >
-              <Google className="h-5 w-5" />
+              <GanttChart className="h-5 w-5" />
               Sign up with Google
             </Button>
             

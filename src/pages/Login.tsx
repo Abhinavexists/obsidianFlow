@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Github, Mail, Loader2, Google } from 'lucide-react';
+import { BookOpen, Github, Mail, Loader2, GanttChart } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -125,7 +124,7 @@ const Login: React.FC = () => {
               disabled={isLoggingIn}
               onClick={handleGoogleLogin}
             >
-              <Google className="h-5 w-5" />
+              <GanttChart className="h-5 w-5" />
               Continue with Google
             </Button>
             
