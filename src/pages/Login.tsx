@@ -3,12 +3,13 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Github, Mail } from 'lucide-react';
+import { BookOpen, Github, Mail, Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -19,6 +20,8 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
   
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -28,20 +31,40 @@ const Login: React.FC = () => {
     },
   });
 
-  function onSubmit(data: LoginFormValues) {
-    // In a real app, this would connect to an authentication service
-    console.log("Login form submitted:", data);
+  async function onSubmit(data: LoginFormValues) {
+    setIsLoggingIn(true);
     
-    // Show success message
-    toast({
-      title: "Login successful!",
-      description: "Redirecting to your notes...",
-    });
-    
-    // Redirect to the app after a short delay
-    setTimeout(() => {
-      navigate('/app');
-    }, 1500);
+    try {
+      const result = await login(data.email, data.password);
+      
+      if (result.success) {
+        // Show success message
+        toast({
+          title: "Login successful!",
+          description: "Redirecting to your notes...",
+        });
+        
+        // Redirect to the app
+        navigate('/app');
+      } else {
+        // Show error message
+        toast({
+          title: "Login failed",
+          description: result.error || "Invalid email or password",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingIn(false);
+    }
   }
 
   return (
@@ -62,15 +85,18 @@ const Login: React.FC = () => {
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
             <p className="text-muted-foreground">Log in to access your notes</p>
+            <div className="mt-2 text-sm text-obsidian-400">
+              (Try: user@example.com / password123)
+            </div>
           </div>
 
           {/* Social Login Buttons */}
           <div className="flex flex-col gap-3 mb-6">
-            <Button variant="outline" className="w-full gap-2">
+            <Button variant="outline" className="w-full gap-2" disabled={isLoggingIn}>
               <Github className="h-5 w-5" />
               Continue with GitHub
             </Button>
-            <Button variant="outline" className="w-full gap-2">
+            <Button variant="outline" className="w-full gap-2" disabled={isLoggingIn}>
               <Mail className="h-5 w-5" />
               Continue with Google
             </Button>
@@ -95,7 +121,7 @@ const Login: React.FC = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
+                      <Input placeholder="you@example.com" {...field} disabled={isLoggingIn} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -109,7 +135,7 @@ const Login: React.FC = () => {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} disabled={isLoggingIn} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -122,7 +148,10 @@ const Login: React.FC = () => {
                 </Link>
               </div>
               
-              <Button type="submit" className="w-full">Log in</Button>
+              <Button type="submit" className="w-full" disabled={isLoggingIn}>
+                {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoggingIn ? 'Logging in...' : 'Log in'}
+              </Button>
             </form>
           </Form>
           
