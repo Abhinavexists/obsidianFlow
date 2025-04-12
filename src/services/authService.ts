@@ -1,92 +1,113 @@
 
-// Simple mock authentication service
-// In a real app, this would connect to a backend authentication service
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-interface AuthResponse {
-  success: boolean;
-  user?: User;
-  error?: string;
-}
-
-// Simulate some registered users
-const MOCK_USERS = [
-  {
-    id: "1",
-    email: "user@example.com",
-    name: "Demo User",
-    password: "password123"
-  },
-  {
-    id: "2",
-    email: "admin@example.com",
-    name: "Admin User",
-    password: "admin123"
-  }
-];
-
-// Store the current user in local storage
-export const getCurrentUser = (): User | null => {
-  const userJson = localStorage.getItem('obsidianflow-current-user');
-  if (userJson) {
-    try {
-      return JSON.parse(userJson);
-    } catch (e) {
-      console.error('Failed to parse current user:', e);
-      return null;
-    }
-  }
-  return null;
+// Get the current user from Supabase session
+export const getCurrentUser = async (): Promise<User | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user || null;
 };
 
 // Check if user is authenticated
-export const isAuthenticated = (): boolean => {
-  return getCurrentUser() !== null;
+export const isAuthenticated = async (): Promise<boolean> => {
+  const user = await getCurrentUser();
+  return !!user;
 };
 
-// Login user
-export const login = async (email: string, password: string): Promise<AuthResponse> => {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
+// Login with email and password
+export const loginWithEmail = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
   
-  // Find user with matching email and password
-  const user = MOCK_USERS.find(u => u.email === email && u.password === password);
-  
-  if (user) {
-    // Create a safe user object without the password
-    const safeUser: User = {
-      id: user.id,
-      email: user.email,
-      name: user.name
-    };
-    
-    // Store user in localStorage
-    localStorage.setItem('obsidianflow-current-user', JSON.stringify(safeUser));
-    
+  if (error) {
     return {
-      success: true,
-      user: safeUser
+      success: false,
+      error: error.message
     };
   }
   
   return {
-    success: false,
-    error: "Invalid email or password"
+    success: true,
+    user: data.user
+  };
+};
+
+// Sign up with email and password
+export const signUpWithEmail = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+  
+  if (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+  
+  return {
+    success: true,
+    user: data.user
+  };
+};
+
+// Login with GitHub
+export const loginWithGitHub = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'github',
+    options: {
+      redirectTo: `${window.location.origin}/app`
+    }
+  });
+  
+  if (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+  
+  return {
+    success: true,
+    url: data.url
+  };
+};
+
+// Login with Google
+export const loginWithGoogle = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/app`
+    }
+  });
+  
+  if (error) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+  
+  return {
+    success: true,
+    url: data.url
   };
 };
 
 // Logout user
-export const logout = (): void => {
-  localStorage.removeItem('obsidianflow-current-user');
+export const logout = async () => {
+  await supabase.auth.signOut();
 };
 
 const authService = {
-  login,
+  loginWithEmail,
+  signUpWithEmail,
+  loginWithGitHub,
+  loginWithGoogle,
   logout,
   isAuthenticated,
   getCurrentUser

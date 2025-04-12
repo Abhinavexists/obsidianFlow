@@ -1,54 +1,137 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import authService, { User } from '../services/authService';
+import { User } from '@supabase/supabase-js';
+import { supabase } from "@/integrations/supabase/client";
+import authService from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{success: boolean; error?: string}>;
-  logout: () => void;
+  loginWithEmail: (email: string, password: string) => Promise<{success: boolean; error?: string}>;
+  signUpWithEmail: (email: string, password: string) => Promise<{success: boolean; error?: string}>;
+  loginWithGitHub: () => Promise<{success: boolean; url?: string; error?: string}>;
+  loginWithGoogle: () => Promise<{success: boolean; url?: string; error?: string}>;
+  logout: () => Promise<void>;
   isLoading: boolean;
+  userProfile: { name?: string; avatar_url?: string } | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<{ name?: string; avatar_url?: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is already logged in on mount
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setIsLoading(false);
-  }, []);
+  // Fetch user profile data from profiles table
+  const fetchUserProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name, avatar_url')
+      .eq('id', userId)
+      .single();
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const response = await authService.login(email, password);
-      if (response.success && response.user) {
-        setUser(response.user);
-        return { success: true };
-      }
-      return { success: false, error: response.error || 'Login failed' };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'An unexpected error occurred' };
-    } finally {
-      setIsLoading(false);
+    if (!error && data) {
+      setUserProfile(data);
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    setUser(null);
+  // Set up auth state listener and initialize session
+  useEffect(() => {
+    // First set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const user = session?.user;
+        setUser(user || null);
+        
+        // Use setTimeout to avoid potential recursion issues
+        if (user) {
+          setTimeout(() => {
+            fetchUserProfile(user.id);
+          }, 0);
+        } else {
+          setUserProfile(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user;
+      setUser(user || null);
+      
+      if (user) {
+        fetchUserProfile(user.id);
+      }
+      
+      setIsLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const loginWithEmail = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const result = await authService.loginWithEmail(email, password);
+      setIsLoading(false);
+      return result;
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Login error:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const result = await authService.signUpWithEmail(email, password);
+      setIsLoading(false);
+      return result;
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Signup error:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  };
+
+  const loginWithGitHub = async () => {
+    try {
+      return await authService.loginWithGitHub();
+    } catch (error) {
+      console.error('GitHub login error:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      return await authService.loginWithGoogle();
+    } catch (error) {
+      console.error('Google login error:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    }
+  };
+
+  const logout = async () => {
+    setIsLoading(true);
+    await authService.logout();
+    setIsLoading(false);
   };
 
   const value = {
     user,
+    userProfile,
     isAuthenticated: !!user,
-    login,
+    loginWithEmail,
+    signUpWithEmail,
+    loginWithGitHub,
+    loginWithGoogle,
     logout,
     isLoading
   };

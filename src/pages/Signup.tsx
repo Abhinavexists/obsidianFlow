@@ -4,20 +4,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Github, Mail } from 'lucide-react';
+import { BookOpen, Github, Mail, Loader2, Google } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const signupSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string()
-    .min(8, { message: "Password must be at least 8 characters long" })
-    .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
-    .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
-    .regex(/[0-9]/, { message: "Password must contain at least one number" }),
+    .min(6, { message: "Password must be at least 6 characters long" }),
   confirmPassword: z.string()
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -28,6 +26,8 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
+  const { signUpWithEmail, loginWithGitHub, loginWithGoogle } = useAuth();
+  const [isSigningUp, setIsSigningUp] = React.useState(false);
   
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -38,21 +38,63 @@ const Signup: React.FC = () => {
     },
   });
 
-  function onSubmit(data: SignupFormValues) {
-    // In a real app, this would connect to a backend service
-    console.log("Signup form submitted:", data);
+  async function onSubmit(data: SignupFormValues) {
+    setIsSigningUp(true);
     
-    // Show success message
-    toast({
-      title: "Account created successfully!",
-      description: "Redirecting you to the app...",
-    });
-    
-    // Redirect to the app after a short delay
-    setTimeout(() => {
-      navigate('/app');
-    }, 2000);
+    try {
+      const result = await signUpWithEmail(data.email, data.password);
+      
+      if (result.success) {
+        toast({
+          title: "Account created successfully!",
+          description: "Please check your email for verification instructions.",
+        });
+        
+        // Redirect to the login page after successful signup
+        navigate('/login');
+      } else {
+        toast({
+          title: "Signup failed",
+          description: result.error || "An error occurred during signup",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      
+      toast({
+        title: "Signup failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningUp(false);
+    }
   }
+
+  const handleGitHubLogin = async () => {
+    const result = await loginWithGitHub();
+    
+    if (!result.success) {
+      toast({
+        title: "Login failed",
+        description: result.error || "Could not connect to GitHub",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const result = await loginWithGoogle();
+    
+    if (!result.success) {
+      toast({
+        title: "Login failed",
+        description: result.error || "Could not connect to Google",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -76,12 +118,22 @@ const Signup: React.FC = () => {
 
           {/* Social Login Buttons */}
           <div className="flex flex-col gap-3 mb-6">
-            <Button variant="outline" className="w-full gap-2">
+            <Button 
+              variant="outline" 
+              className="w-full gap-2"
+              disabled={isSigningUp}
+              onClick={handleGitHubLogin}
+            >
               <Github className="h-5 w-5" />
               Sign up with GitHub
             </Button>
-            <Button variant="outline" className="w-full gap-2">
-              <Mail className="h-5 w-5" />
+            <Button 
+              variant="outline" 
+              className="w-full gap-2"
+              disabled={isSigningUp}
+              onClick={handleGoogleLogin}
+            >
+              <Google className="h-5 w-5" />
               Sign up with Google
             </Button>
             
@@ -105,7 +157,7 @@ const Signup: React.FC = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="you@example.com" {...field} />
+                      <Input placeholder="you@example.com" {...field} disabled={isSigningUp} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -119,7 +171,7 @@ const Signup: React.FC = () => {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} disabled={isSigningUp} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -133,14 +185,17 @@ const Signup: React.FC = () => {
                   <FormItem>
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} disabled={isSigningUp} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
-              <Button type="submit" className="w-full">Create account</Button>
+              <Button type="submit" className="w-full" disabled={isSigningUp}>
+                {isSigningUp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSigningUp ? 'Creating account...' : 'Create account'}
+              </Button>
             </form>
           </Form>
           

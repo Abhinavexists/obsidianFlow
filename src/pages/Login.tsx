@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BookOpen, Github, Mail, Loader2 } from 'lucide-react';
+import { BookOpen, Github, Mail, Loader2, Google } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -20,7 +20,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { loginWithEmail, loginWithGitHub, loginWithGoogle } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
   
   const form = useForm<LoginFormValues>({
@@ -35,19 +35,16 @@ const Login: React.FC = () => {
     setIsLoggingIn(true);
     
     try {
-      const result = await login(data.email, data.password);
+      const result = await loginWithEmail(data.email, data.password);
       
       if (result.success) {
-        // Show success message
         toast({
           title: "Login successful!",
           description: "Redirecting to your notes...",
         });
         
-        // Redirect to the app
         navigate('/app');
       } else {
-        // Show error message
         toast({
           title: "Login failed",
           description: result.error || "Invalid email or password",
@@ -67,6 +64,30 @@ const Login: React.FC = () => {
     }
   }
 
+  const handleGitHubLogin = async () => {
+    const result = await loginWithGitHub();
+    
+    if (!result.success) {
+      toast({
+        title: "Login failed",
+        description: result.error || "Could not connect to GitHub",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const result = await loginWithGoogle();
+    
+    if (!result.success) {
+      toast({
+        title: "Login failed",
+        description: result.error || "Could not connect to Google",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -85,19 +106,26 @@ const Login: React.FC = () => {
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
             <p className="text-muted-foreground">Log in to access your notes</p>
-            <div className="mt-2 text-sm text-obsidian-400">
-              (Try: user@example.com / password123)
-            </div>
           </div>
 
           {/* Social Login Buttons */}
           <div className="flex flex-col gap-3 mb-6">
-            <Button variant="outline" className="w-full gap-2" disabled={isLoggingIn}>
+            <Button 
+              variant="outline" 
+              className="w-full gap-2" 
+              disabled={isLoggingIn}
+              onClick={handleGitHubLogin}
+            >
               <Github className="h-5 w-5" />
               Continue with GitHub
             </Button>
-            <Button variant="outline" className="w-full gap-2" disabled={isLoggingIn}>
-              <Mail className="h-5 w-5" />
+            <Button 
+              variant="outline" 
+              className="w-full gap-2" 
+              disabled={isLoggingIn}
+              onClick={handleGoogleLogin}
+            >
+              <Google className="h-5 w-5" />
               Continue with Google
             </Button>
             
