@@ -2,7 +2,7 @@
 // Simple mock authentication service
 // In a real app, this would connect to a backend authentication service
 
-interface User {
+export interface User {
   id: string;
   email: string;
   name: string;
