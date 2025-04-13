@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, Eye, Edit, Hash, Plus, Wand, Lightbulb, FileText, Check, Search, ConnectIcon, Sparkles } from 'lucide-react';
+import { Save, Eye, Edit, Hash, Plus, Wand, Lightbulb, FileText, Check, Search, Link, Sparkles } from 'lucide-react';
 import { Note } from '@/types/note';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from "@/hooks/use-toast";
