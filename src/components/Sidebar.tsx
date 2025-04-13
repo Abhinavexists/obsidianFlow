@@ -10,11 +10,15 @@ import {
   File, 
   Plus,
   Menu,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { Note } from '@/types/note';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Toggle } from '@/components/ui/toggle';
+import { useToast } from '@/hooks/use-toast';
+import noteService from '@/services/noteService';
 
 interface SidebarProps {
   notes: Note[];
@@ -36,10 +40,13 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggle
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [useAiSearch, setUseAiSearch] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
     'notes': true,
     'tags': false,
   });
+  const { toast } = useToast();
 
   const toggleFolder = (folder: string) => {
     setExpandedFolders({
@@ -48,9 +55,68 @@ const Sidebar: React.FC<SidebarProps> = ({
     });
   };
 
-  const filteredNotes = notes.filter(note =>
-    note.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Basic search function
+  const basicSearch = () => {
+    if (!searchTerm.trim()) return notes;
+    
+    return notes.filter(note => {
+      const contentToSearch = `${note.title} ${note.content} ${note.tags.join(' ')}`.toLowerCase();
+      return contentToSearch.includes(searchTerm.toLowerCase());
+    });
+  };
+  
+  // AI-enhanced search
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
+    
+    if (useAiSearch) {
+      try {
+        setIsSearching(true);
+        await noteService.smartSearch(searchTerm);
+        // Results are handled in filteredNotes
+      } catch (error) {
+        console.error("AI search error:", error);
+        toast({
+          title: "Search error",
+          description: "AI search failed, falling back to basic search",
+          variant: "destructive",
+        });
+        setUseAiSearch(false);
+      } finally {
+        setIsSearching(false);
+      }
+    }
+  };
+
+  // Use state to hold filtered notes
+  const [filteredNotes, setFilteredNotes] = useState<Note[]>(notes);
+
+  // Update filtered notes when search changes or notes change
+  React.useEffect(() => {
+    const updateFilteredNotes = async () => {
+      if (!searchTerm.trim()) {
+        setFilteredNotes(notes);
+        return;
+      }
+      
+      if (useAiSearch) {
+        try {
+          setIsSearching(true);
+          const aiResults = await noteService.smartSearch(searchTerm);
+          setFilteredNotes(aiResults);
+        } catch (error) {
+          console.error("AI search error:", error);
+          setFilteredNotes(basicSearch());
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setFilteredNotes(basicSearch());
+      }
+    };
+    
+    updateFilteredNotes();
+  }, [searchTerm, notes, useAiSearch]);
 
   // Extract all unique tags from notes
   const allTags = Array.from(
@@ -82,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Button>
         )}
       </div>
-      <div className="p-2">
+      <div className="p-2 space-y-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -91,7 +157,19 @@ const Sidebar: React.FC<SidebarProps> = ({
             className="pl-8 bg-background"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
+        </div>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs text-muted-foreground">AI Search</span>
+          <Toggle
+            pressed={useAiSearch}
+            onPressedChange={setUseAiSearch}
+            size="sm"
+            aria-label="Toggle AI search"
+          >
+            <Sparkles size={12} className={useAiSearch ? "text-obsidian-300" : "text-muted-foreground"} />
+          </Toggle>
         </div>
       </div>
       
@@ -116,7 +194,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             {expandedFolders.notes && (
               <div className="ml-6 mt-1">
-                {filteredNotes.length > 0 ? (
+                {isSearching ? (
+                  <div className="text-sm text-muted-foreground p-2">Searching...</div>
+                ) : filteredNotes.length > 0 ? (
                   filteredNotes.map(note => (
                     <div
                       key={note.id}

@@ -3,10 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, Eye, Edit, Hash, Plus } from 'lucide-react';
+import { Save, Eye, Edit, Hash, Plus, Wand, Lightbulb, FileText, Check, Search, ConnectIcon, Sparkles } from 'lucide-react';
 import { Note } from '@/types/note';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from "@/hooks/use-toast";
+import noteService, { aiService } from '@/services/noteService';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface NoteEditorProps {
   note: Note | null;
@@ -19,6 +27,9 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [isPreview, setIsPreview] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [relatedNotes, setRelatedNotes] = useState<Note[]>([]);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -64,6 +75,161 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
+
+  // AI Feature Handlers
+  const handleSummarizeNote = async () => {
+    if (!note || !content) return;
+
+    try {
+      setIsLoading(true);
+      const summary = await noteService.summarizeNote(note.id);
+      
+      toast({
+        title: "Note Summary",
+        description: summary,
+        duration: 10000,
+      });
+    } catch (error) {
+      console.error("Error summarizing note:", error);
+      toast({
+        title: "Error",
+        description: "Failed to summarize note. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuggestTags = async () => {
+    if (!note || !content) return;
+
+    try {
+      setIsLoading(true);
+      const suggestedTags = await noteService.suggestTags(note.id);
+      
+      // Add suggested tags that don't already exist
+      const newTags = suggestedTags.filter(tag => !tags.includes(tag));
+      
+      if (newTags.length > 0) {
+        setTags([...tags, ...newTags]);
+        toast({
+          title: "Tags suggested",
+          description: `Added ${newTags.length} tags: ${newTags.join(', ')}`,
+        });
+      } else {
+        toast({
+          title: "No new tags",
+          description: "All suggested tags are already in use.",
+        });
+      }
+    } catch (error) {
+      console.error("Error suggesting tags:", error);
+      toast({
+        title: "Error",
+        description: "Failed to suggest tags. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    if (!aiPrompt) {
+      toast({
+        title: "Prompt required",
+        description: "Please enter a prompt for content generation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const generatedContent = await noteService.generateContent(aiPrompt);
+      
+      // Append to existing content with proper spacing
+      const updatedContent = content 
+        ? `${content}\n\n${generatedContent}` 
+        : generatedContent;
+      
+      setContent(updatedContent);
+      setAiPrompt('');
+      
+      toast({
+        title: "Content generated",
+        description: "AI-generated content added to note.",
+      });
+    } catch (error) {
+      console.error("Error generating content:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate content. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFindConnections = async () => {
+    if (!note || !content) return;
+
+    try {
+      setIsLoading(true);
+      const notes = await noteService.getAllNotes();
+      const related = await noteService.findRelatedNotes(note.id, notes);
+      
+      setRelatedNotes(related);
+      
+      if (related.length > 0) {
+        toast({
+          title: "Connections found",
+          description: `Found ${related.length} related notes.`,
+        });
+      } else {
+        toast({
+          title: "No connections",
+          description: "No related notes found.",
+        });
+      }
+    } catch (error) {
+      console.error("Error finding connections:", error);
+      toast({
+        title: "Error",
+        description: "Failed to find connections. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCheckGrammar = async () => {
+    if (!content) return;
+
+    try {
+      setIsLoading(true);
+      const correctedContent = await noteService.checkGrammar(content);
+      
+      setContent(correctedContent);
+      
+      toast({
+        title: "Grammar check complete",
+        description: "Text has been checked and corrected.",
+      });
+    } catch (error) {
+      console.error("Error checking grammar:", error);
+      toast({
+        title: "Error",
+        description: "Failed to check grammar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   if (!note) {
     return (
@@ -85,6 +251,38 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
         />
         
         <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                disabled={isLoading}
+              >
+                <Wand size={16} className="mr-1" />
+                AI Tools
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={handleSummarizeNote} disabled={!content || isLoading}>
+                <FileText size={14} className="mr-2" />
+                Summarize Note
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSuggestTags} disabled={!content || isLoading}>
+                <Hash size={14} className="mr-2" />
+                Suggest Tags
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleFindConnections} disabled={!content || isLoading}>
+                <Search size={14} className="mr-2" />
+                Find Connections
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCheckGrammar} disabled={!content || isLoading}>
+                <Check size={14} className="mr-2" />
+                Grammar Check
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <Button
             variant="ghost"
             size="sm"
@@ -143,6 +341,29 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
         </div>
       </div>
       
+      {/* AI Content Generator */}
+      {!isPreview && (
+        <div className="border-b border-border p-2 flex items-center gap-2">
+          <Sparkles size={16} className="text-obsidian-300" />
+          <Input
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleGenerateContent()}
+            placeholder="Enter a prompt for AI to generate content..."
+            className="bg-background flex-1"
+            disabled={isLoading}
+          />
+          <Button
+            onClick={handleGenerateContent}
+            size="sm"
+            disabled={!aiPrompt || isLoading}
+            className="bg-obsidian-500 hover:bg-obsidian-600"
+          >
+            {isLoading ? 'Generating...' : 'Generate'}
+          </Button>
+        </div>
+      )}
+      
       {/* Editor/Preview Area */}
       <div className="flex-1 overflow-auto">
         {isPreview ? (
@@ -158,6 +379,23 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
           />
         )}
       </div>
+      
+      {/* Related Notes Panel */}
+      {relatedNotes.length > 0 && (
+        <div className="border-t border-border p-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Lightbulb size={16} className="text-obsidian-300" />
+            <h3 className="text-sm font-medium">Related Notes</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {relatedNotes.map((relatedNote) => (
+              <div key={relatedNote.id} className="bg-muted px-2 py-1 rounded-md text-xs">
+                {relatedNote.title || "Untitled"}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

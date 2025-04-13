@@ -5,18 +5,22 @@ import NoteEditor from '@/components/NoteEditor';
 import { Note } from '@/types/note';
 import noteService from '@/services/noteService';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useToast } from '@/hooks/use-toast';
 
 const Index: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   
   // Load all notes
   useEffect(() => {
     const loadNotes = async () => {
       try {
+        setIsLoading(true);
         const fetchedNotes = await noteService.getAllNotes();
         setNotes(fetchedNotes);
         
@@ -26,6 +30,13 @@ const Index: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to load notes:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load notes",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -37,10 +48,18 @@ const Index: React.FC = () => {
     const loadSelectedNote = async () => {
       if (selectedNoteId) {
         try {
+          setIsLoading(true);
           const note = await noteService.getNoteById(selectedNoteId);
           setSelectedNote(note);
         } catch (error) {
           console.error('Failed to load selected note:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load the selected note",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
         }
       } else {
         setSelectedNote(null);
@@ -53,6 +72,7 @@ const Index: React.FC = () => {
   // Create a new note
   const handleCreateNote = async () => {
     try {
+      setIsLoading(true);
       const newNote = await noteService.createNote();
       setNotes(prevNotes => [newNote, ...prevNotes]);
       setSelectedNoteId(newNote.id);
@@ -61,14 +81,27 @@ const Index: React.FC = () => {
       if (isMobile) {
         setSidebarOpen(false);
       }
+
+      toast({
+        title: "Note created",
+        description: "New note has been created",
+      });
     } catch (error) {
       console.error('Failed to create note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create new note",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
   
   // Save note changes
   const handleSaveNote = async (updatedNote: Note) => {
     try {
+      setIsLoading(true);
       await noteService.updateNote(updatedNote);
       setNotes(prevNotes =>
         prevNotes.map(note =>
@@ -77,6 +110,13 @@ const Index: React.FC = () => {
       );
     } catch (error) {
       console.error('Failed to save note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save note changes",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -116,10 +156,16 @@ const Index: React.FC = () => {
           />
         )}
         
-        <NoteEditor
-          note={selectedNote}
-          onSave={handleSaveNote}
-        />
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin h-8 w-8 border-4 border-obsidian-300 border-t-transparent rounded-full"></div>
+          </div>
+        ) : (
+          <NoteEditor
+            note={selectedNote}
+            onSave={handleSaveNote}
+          />
+        )}
       </main>
     </div>
   );

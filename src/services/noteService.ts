@@ -1,6 +1,7 @@
 
 import { Note } from '@/types/note';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from "@/integrations/supabase/client";
 
 // Initial sample notes
 const initialNotes: Note[] = [
@@ -17,6 +18,7 @@ This is your new knowledge management workspace. Here are some features to explo
 - **Link Notes**: Create connections between your notes with [[double brackets]]
 - **Tags**: Organize your notes with #tags
 - **Search**: Quickly find what you need
+- **AI Features**: Leverage AI to enhance your notes
 
 ## Tips
 
@@ -24,9 +26,10 @@ This is your new knowledge management workspace. Here are some features to explo
 - Use markdown for formatting
 - Tag your notes for better organization
 - Toggle between edit and preview modes
+- Use AI features to generate content, summarize notes, and more
 
 Happy note-taking!`,
-    tags: ['welcome', 'getting-started'],
+    tags: ['welcome', 'getting-started', 'ai-enabled'],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -110,6 +113,67 @@ const saveNotes = (notes: Note[]) => {
   localStorage.setItem('obsidianflow-notes', JSON.stringify(notes));
 };
 
+// AI service methods
+const aiService = {
+  callGeminiAPI: async (action: string, content: string, note?: Note): Promise<string> => {
+    try {
+      const response = await supabase.functions.invoke("gemini-ai", {
+        body: { action, content, note },
+      });
+      
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to process with AI");
+      }
+      
+      return response.data.result;
+    } catch (error) {
+      console.error(`AI ${action} error:`, error);
+      throw error;
+    }
+  },
+  
+  summarizeNote: async (content: string): Promise<string> => {
+    return await aiService.callGeminiAPI("summarize", content);
+  },
+  
+  suggestTags: async (content: string): Promise<string[]> => {
+    const tagsResult = await aiService.callGeminiAPI("suggest-tags", content);
+    return tagsResult.split(',').map(tag => tag.trim());
+  },
+  
+  generateContent: async (prompt: string): Promise<string> => {
+    return await aiService.callGeminiAPI("generate-content", prompt);
+  },
+  
+  findConnections: async (content: string): Promise<string> => {
+    return await aiService.callGeminiAPI("find-connections", content);
+  },
+  
+  checkGrammar: async (content: string): Promise<string> => {
+    return await aiService.callGeminiAPI("grammar-check", content);
+  },
+  
+  smartSearch: async (query: string, notes: Note[]): Promise<Note[]> => {
+    try {
+      const searchTerms = await aiService.callGeminiAPI("smart-search", query);
+      const terms = searchTerms.split(',').map(term => term.trim().toLowerCase());
+      
+      // Enhanced search using AI-suggested terms
+      return notes.filter(note => {
+        const noteContent = `${note.title} ${note.content} ${note.tags.join(' ')}`.toLowerCase();
+        return terms.some(term => noteContent.includes(term));
+      });
+    } catch (error) {
+      console.error("Smart search error:", error);
+      // Fallback to basic search if AI fails
+      return notes.filter(note => {
+        const noteContent = `${note.title} ${note.content} ${note.tags.join(' ')}`.toLowerCase();
+        return noteContent.includes(query.toLowerCase());
+      });
+    }
+  }
+};
+
 // Note service methods
 export const noteService = {
   getAllNotes: (): Promise<Note[]> => {
@@ -163,7 +227,48 @@ export const noteService = {
     }
     
     return Promise.resolve(false);
+  },
+  
+  // AI-enhanced methods
+  summarizeNote: async (noteId: string): Promise<string> => {
+    const note = await noteService.getNoteById(noteId);
+    if (!note) throw new Error("Note not found");
+    return await aiService.summarizeNote(note.content);
+  },
+  
+  suggestTags: async (noteId: string): Promise<string[]> => {
+    const note = await noteService.getNoteById(noteId);
+    if (!note) throw new Error("Note not found");
+    return await aiService.suggestTags(note.content);
+  },
+  
+  generateContent: async (prompt: string): Promise<string> => {
+    return await aiService.generateContent(prompt);
+  },
+  
+  findRelatedNotes: async (noteId: string, notes: Note[]): Promise<Note[]> => {
+    const note = await noteService.getNoteById(noteId);
+    if (!note) throw new Error("Note not found");
+    
+    const concepts = await aiService.findConnections(note.content);
+    const conceptList = concepts.split(',').map(c => c.trim().toLowerCase());
+    
+    return notes.filter(n => {
+      if (n.id === noteId) return false; // Exclude the current note
+      const noteText = `${n.title} ${n.content} ${n.tags.join(' ')}`.toLowerCase();
+      return conceptList.some(concept => noteText.includes(concept));
+    });
+  },
+  
+  checkGrammar: async (content: string): Promise<string> => {
+    return await aiService.checkGrammar(content);
+  },
+  
+  smartSearch: async (query: string): Promise<Note[]> => {
+    const notes = loadNotes();
+    return await aiService.smartSearch(query, notes);
   }
 };
 
+export { aiService };
 export default noteService;
