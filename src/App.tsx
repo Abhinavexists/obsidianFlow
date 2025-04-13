@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import SettingsPage from "./pages/SettingsPage";
 import { useAuth } from "./contexts/AuthContext";
 
 // Create a client
@@ -34,6 +35,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/app" element={<ProtectedRoute element={<Index />} />} />
+      <Route path="/app/settings" element={<ProtectedRoute element={<SettingsPage />} />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

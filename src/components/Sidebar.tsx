@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Search, 
@@ -18,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Toggle } from '@/components/ui/toggle';
 import { useToast } from '@/hooks/use-toast';
+import { Link, useNavigate } from 'react-router-dom';
 import noteService from '@/services/noteService';
 
 interface SidebarProps {
@@ -249,10 +249,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
       
       <div className="border-t border-border p-2">
-        <div className="flex items-center p-2 hover:bg-muted rounded-md cursor-pointer">
+        <Link to="/app/settings" className="flex items-center p-2 hover:bg-muted rounded-md cursor-pointer">
           <Settings size={16} className="mr-2" />
           <span>Settings</span>
-        </div>
+        </Link>
       </div>
     </aside>
   );
