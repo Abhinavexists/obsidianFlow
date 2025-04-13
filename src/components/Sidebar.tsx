@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Search, 
@@ -13,7 +12,7 @@ import {
   X,
   Sparkles,
   Trash2,
-  Graph
+  Network
 } from 'lucide-react';
 import { Note } from '@/types/note';
 import { Button } from '@/components/ui/button';
@@ -209,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           className="w-full"
           onClick={goToGraphView}
         >
-          <Graph size={16} className="mr-1" /> Knowledge Graph
+          <Network size={16} className="mr-1" /> Knowledge Graph
         </Button>
       </div>
 
