@@ -6,6 +6,7 @@ import { Note } from '@/types/note';
 import noteService from '@/services/noteService';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'react-router-dom';
 
 const Index: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -15,6 +16,14 @@ const Index: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const location = useLocation();
+  
+  // Handle note selection from graph page
+  useEffect(() => {
+    if (location.state?.selectedNoteId) {
+      setSelectedNoteId(location.state.selectedNoteId);
+    }
+  }, [location.state]);
   
   // Load all notes
   useEffect(() => {
@@ -120,6 +129,43 @@ const Index: React.FC = () => {
     }
   };
   
+  // Delete a note
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      setIsLoading(true);
+      const success = await noteService.deleteNote(noteId);
+      
+      if (success) {
+        // Update notes list
+        const updatedNotes = notes.filter(note => note.id !== noteId);
+        setNotes(updatedNotes);
+        
+        // Select another note if available
+        if (selectedNoteId === noteId) {
+          if (updatedNotes.length > 0) {
+            setSelectedNoteId(updatedNotes[0].id);
+          } else {
+            setSelectedNoteId(null);
+          }
+        }
+        
+        toast({
+          title: "Note deleted",
+          description: "The note has been deleted successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete note",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Toggle sidebar
   const toggleSidebar = () => {
     setSidebarOpen(prev => !prev);
@@ -142,6 +188,7 @@ const Index: React.FC = () => {
         selectedNoteId={selectedNoteId}
         onNoteSelect={handleNoteSelect}
         onCreateNote={handleCreateNote}
+        onDeleteNote={handleDeleteNote}
         isMobile={isMobile}
         isOpen={sidebarOpen}
         onToggle={toggleSidebar}
@@ -164,6 +211,7 @@ const Index: React.FC = () => {
           <NoteEditor
             note={selectedNote}
             onSave={handleSaveNote}
+            onDelete={handleDeleteNote}
           />
         )}
       </main>

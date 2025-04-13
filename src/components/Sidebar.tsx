@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Search, 
@@ -10,7 +11,9 @@ import {
   Plus,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  Trash2,
+  Graph
 } from 'lucide-react';
 import { Note } from '@/types/note';
 import { Button } from '@/components/ui/button';
@@ -19,12 +22,24 @@ import { Toggle } from '@/components/ui/toggle';
 import { useToast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router-dom';
 import noteService from '@/services/noteService';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SidebarProps {
   notes: Note[];
   selectedNoteId: string | null;
   onNoteSelect: (id: string) => void;
   onCreateNote: () => void;
+  onDeleteNote: (id: string) => void;
   isMobile: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -35,6 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   selectedNoteId,
   onNoteSelect,
   onCreateNote,
+  onDeleteNote,
   isMobile,
   isOpen,
   onToggle
@@ -47,6 +63,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     'tags': false,
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const toggleFolder = (folder: string) => {
     setExpandedFolders({
@@ -124,6 +141,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       notes.flatMap(note => note.tags)
     )
   ).sort();
+  
+  // Navigate to graph visualizer
+  const goToGraphView = () => {
+    navigate('/app/graph');
+  };
 
   if (isMobile && !isOpen) {
     return (
@@ -148,6 +170,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Button>
         )}
       </div>
+      
       <div className="p-2 space-y-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -173,12 +196,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
       
-      <Button
-        onClick={onCreateNote}
-        className="mx-4 mb-2 bg-obsidian-600 hover:bg-obsidian-700"
-      >
-        <Plus size={16} className="mr-1" /> New Note
-      </Button>
+      <div className="mx-4 mb-2 space-y-2">
+        <Button
+          onClick={onCreateNote}
+          className="w-full bg-obsidian-600 hover:bg-obsidian-700"
+        >
+          <Plus size={16} className="mr-1" /> New Note
+        </Button>
+        
+        <Button
+          variant="outline" 
+          className="w-full"
+          onClick={goToGraphView}
+        >
+          <Graph size={16} className="mr-1" /> Knowledge Graph
+        </Button>
+      </div>
 
       <div className="flex-1 overflow-auto">
         <div className="p-2">
@@ -200,13 +233,46 @@ const Sidebar: React.FC<SidebarProps> = ({
                   filteredNotes.map(note => (
                     <div
                       key={note.id}
-                      className={`flex items-center p-2 hover:bg-muted rounded-md cursor-pointer ${
-                        selectedNoteId === note.id ? 'bg-muted text-obsidian-300' : ''
-                      }`}
-                      onClick={() => onNoteSelect(note.id)}
+                      className="flex items-center p-2 hover:bg-muted rounded-md"
                     >
-                      <File size={14} className="mr-2" />
-                      <span className="truncate">{note.title || 'Untitled'}</span>
+                      <div 
+                        className={`flex-1 flex items-center cursor-pointer ${
+                          selectedNoteId === note.id ? 'text-obsidian-300' : ''
+                        }`}
+                        onClick={() => onNoteSelect(note.id)}
+                      >
+                        <File size={14} className="mr-2" />
+                        <span className="truncate">{note.title || 'Untitled'}</span>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 size={14} className="text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Note</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{note.title || 'Untitled'}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => onDeleteNote(note.id)}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   ))
                 ) : (
