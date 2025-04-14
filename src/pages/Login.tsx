@@ -12,26 +12,36 @@ const Login: React.FC = () => {
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
 
   const handleGitHubLogin = async () => {
-    const result = await loginWithGitHub();
-    
-    if (!result.success) {
-      toast({
-        title: "Login failed",
-        description: result.error || "Could not connect to GitHub",
-        variant: "destructive",
-      });
+    try {
+      setIsLoggingIn(true);
+      const result = await loginWithGitHub();
+      
+      if (!result.success) {
+        toast({
+          title: "Login failed",
+          description: result.error || "Could not connect to GitHub",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    const result = await loginWithGoogle();
-    
-    if (!result.success) {
-      toast({
-        title: "Login failed",
-        description: result.error || "Could not connect to Google",
-        variant: "destructive",
-      });
+    try {
+      setIsLoggingIn(true);
+      const result = await loginWithGoogle();
+      
+      if (!result.success) {
+        toast({
+          title: "Login failed",
+          description: result.error || "Could not connect to Google",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 

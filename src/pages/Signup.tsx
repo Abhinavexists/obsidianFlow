@@ -12,26 +12,36 @@ const Signup: React.FC = () => {
   const [isSigningUp, setIsSigningUp] = React.useState(false);
 
   const handleGitHubLogin = async () => {
-    const result = await loginWithGitHub();
-    
-    if (!result.success) {
-      toast({
-        title: "Login failed",
-        description: result.error || "Could not connect to GitHub",
-        variant: "destructive",
-      });
+    try {
+      setIsSigningUp(true);
+      const result = await loginWithGitHub();
+      
+      if (!result.success) {
+        toast({
+          title: "Signup failed",
+          description: result.error || "Could not connect to GitHub",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSigningUp(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    const result = await loginWithGoogle();
-    
-    if (!result.success) {
-      toast({
-        title: "Login failed",
-        description: result.error || "Could not connect to Google",
-        variant: "destructive",
-      });
+    try {
+      setIsSigningUp(true);
+      const result = await loginWithGoogle();
+      
+      if (!result.success) {
+        toast({
+          title: "Signup failed",
+          description: result.error || "Could not connect to Google",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsSigningUp(false);
     }
   };
 
