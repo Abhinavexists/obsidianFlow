@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Search, 
@@ -167,7 +168,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <aside className={`${isOpen ? 'translate-x-0' : '-translate-x-full'} ${isMobile ? 'fixed inset-y-0 left-0 z-40' : ''} w-64 h-full bg-card border-r border-border flex flex-col transition-transform duration-200 ease-in-out`}>
+    <aside className={`
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+      ${isMobile ? 'fixed inset-y-0 left-0 z-40' : 'sticky top-0 h-screen'} 
+      w-64 bg-card border-r border-border flex flex-col transition-transform duration-200 ease-in-out
+    `}>
       <div className="p-4 flex items-center justify-between border-b border-border">
         <h1 className="font-bold text-xl text-obsidian-300">ObsidianFlow</h1>
         {isMobile && (
@@ -239,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   filteredNotes.map(note => (
                     <div
                       key={note.id}
-                      className="flex items-center p-2 hover:bg-muted rounded-md"
+                      className="flex items-center p-2 hover:bg-muted rounded-md group"
                     >
                       <div 
                         className={`flex-1 flex items-center cursor-pointer ${

@@ -6,12 +6,15 @@ import NoteEditor from '@/components/NoteEditor';
 import { Note } from '@/types/note';
 import noteService from '@/services/noteService';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 const Index: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -48,6 +51,10 @@ const Index: React.FC = () => {
   const handleSelectNote = (noteId: string) => {
     const note = notes.find((note) => note.id === noteId);
     setSelectedNote(note || null);
+    
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const handleCreateNote = async () => {
@@ -56,6 +63,10 @@ const Index: React.FC = () => {
       const newNote = await noteService.createNote();
       setNotes((prevNotes) => [...prevNotes, newNote]);
       setSelectedNote(newNote);
+      
+      if (isMobile) {
+        setIsSidebarOpen(false);
+      }
     } catch (error) {
       toast({
         title: "Error creating note",
@@ -111,8 +122,12 @@ const Index: React.FC = () => {
     note.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => !prev);
+  };
+
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar 
         notes={notes}
         selectedNoteId={selectedNote?.id || null}
@@ -123,11 +138,11 @@ const Index: React.FC = () => {
         filteredNotes={filteredNotes}
         onDeleteNote={handleDeleteNote}
         isLoading={isLoading}
-        isMobile={false}
-        isOpen={true}
-        onToggle={() => {}}
+        isMobile={isMobile}
+        isOpen={isSidebarOpen}
+        onToggle={toggleSidebar}
       />
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto relative">
         {selectedNote ? (
           <NoteEditor 
             note={selectedNote} 
