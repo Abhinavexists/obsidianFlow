@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GraphVisualizer from '@/components/GraphVisualizer';
@@ -7,6 +6,7 @@ import noteService from '@/services/noteService';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const GraphPage: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -44,18 +44,29 @@ const GraphPage: React.FC = () => {
   };
   
   return (
-    <div className="container mx-auto p-4 h-screen flex flex-col">
-      <div className="flex items-center mb-6">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={handleBack} 
-          className="mr-2"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          Back to Notes
-        </Button>
-        <h1 className="text-2xl font-bold">Knowledge Graph</h1>
+    <div className="container mx-auto p-4 min-h-screen flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleBack}
+            className="hidden md:flex"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to Notes
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleBack}
+            className="md:hidden"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-xl md:text-2xl font-bold">Knowledge Graph</h1>
+        </div>
+        <ThemeToggle />
       </div>
       
       {isLoading ? (
