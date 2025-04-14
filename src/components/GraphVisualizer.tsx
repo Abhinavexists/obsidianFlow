@@ -1,8 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { ChartContainer } from '@/components/ui/chart';
 import { 
-  ForceGraph, 
   LineChart, 
   Line, 
   ResponsiveContainer,
@@ -14,84 +12,41 @@ import {
 import { Note } from '@/types/note';
 import { useToast } from '@/hooks/use-toast';
 
-interface GraphNode {
-  name: string;
-  id: string;
-}
-
-interface GraphLink {
-  source: string;
-  target: string;
-  value: number;
-}
-
 interface GraphVisualizerProps {
   notes: Note[];
   onSelectNote: (noteId: string) => void;
 }
 
-const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ notes, onSelectNote }) => {
-  const [graphData, setGraphData] = useState<{ nodes: GraphNode[]; links: GraphLink[] }>({
-    nodes: [],
-    links: []
-  });
+interface GraphData {
+  nodes: { id: string; name: string }[];
+  links: { source: string; target: string }[];
+}
+
+const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ 
+  notes, 
+  onSelectNote 
+}) => {
+  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const { toast } = useToast();
 
-  // Parse content for links between notes - look for [[note title]]
-  const findLinks = (notes: Note[]) => {
-    const nodes: GraphNode[] = notes.map(note => ({
-      name: note.title,
-      id: note.id
-    }));
+  useEffect(() => {
+    // Create nodes from notes
+    const nodes = notes.map(note => ({ id: note.id, name: note.title }));
 
-    const links: GraphLink[] = [];
-    
-    // Find connections based on mentions in content
-    notes.forEach(sourceNote => {
-      const content = sourceNote.content.toLowerCase();
-      
-      // Look for mentions of other note titles in the content
-      notes.forEach(targetNote => {
-        if (sourceNote.id !== targetNote.id) {
-          const titlePattern = new RegExp(`\\[\\[${targetNote.title.toLowerCase()}\\]\\]`);
-          if (titlePattern.test(content)) {
-            links.push({
-              source: sourceNote.id,
-              target: targetNote.id,
-              value: 1
-            });
-          }
+    // Create links based on mentions (simple example)
+    const links: { source: string; target: string }[] = [];
+    notes.forEach(note => {
+      const mentionRegex = /@\[\[([\w\s]+)\|([\w-]+)\]\]/g;
+      let match;
+      while ((match = mentionRegex.exec(note.content)) !== null) {
+        const targetNoteId = match[2];
+        if (notes.find(n => n.id === targetNoteId)) {
+          links.push({ source: note.id, target: targetNoteId });
         }
-      });
-      
-      // Also add connections based on shared tags
-      if (sourceNote.tags.length > 0) {
-        notes.forEach(targetNote => {
-          if (sourceNote.id !== targetNote.id) {
-            const sharedTags = sourceNote.tags.filter(tag => 
-              targetNote.tags.includes(tag)
-            );
-            
-            if (sharedTags.length > 0) {
-              links.push({
-                source: sourceNote.id,
-                target: targetNote.id,
-                value: sharedTags.length
-              });
-            }
-          }
-        });
       }
     });
 
-    return { nodes, links };
-  };
-
-  useEffect(() => {
-    if (notes.length > 0) {
-      const data = findLinks(notes);
-      setGraphData(data);
-    }
+    setGraphData({ nodes, links });
   }, [notes]);
 
   // Since we can't use ForceGraph directly (it's not available in recharts),
@@ -115,7 +70,7 @@ const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ notes, onSelectNote }
       onSelectNote(nodeData.id);
       toast({
         title: "Note selected",
-        description: `Navigated to "${nodeData.name}"`,
+        description: `Opened ${nodeData.name}`,
       });
     }
   };
