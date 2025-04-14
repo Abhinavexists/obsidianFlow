@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { ChartContainer } from '@/components/ui/chart';
-import { 
-  LineChart, 
-  Line, 
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  Legend
-} from 'recharts';
+
+import React, { useEffect, useState, useCallback } from 'react';
+import ReactFlow, {
+  MiniMap,
+  Controls,
+  Background,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Edge
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 import { Note } from '@/types/note';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,94 +19,94 @@ interface GraphVisualizerProps {
   onSelectNote: (noteId: string) => void;
 }
 
-interface GraphData {
-  nodes: { id: string; name: string }[];
-  links: { source: string; target: string }[];
-}
-
 const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ 
   notes, 
   onSelectNote 
 }) => {
-  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { toast } = useToast();
 
+  // Process notes into nodes and edges
   useEffect(() => {
+    if (!notes || notes.length === 0) return;
+    
     // Create nodes from notes
-    const nodes = notes.map(note => ({ id: note.id, name: note.title }));
+    const graphNodes = notes.map((note, index) => {
+      return {
+        id: note.id,
+        data: { 
+          label: note.title || 'Untitled',
+          noteId: note.id,
+        },
+        position: { 
+          x: 100 + (index % 3) * 200, 
+          y: 100 + Math.floor(index / 3) * 100 
+        },
+        type: 'default',
+      };
+    });
 
-    // Create links based on mentions (simple example)
-    const links: { source: string; target: string }[] = [];
+    // Create edges based on links in content
+    const graphEdges: Edge[] = [];
     notes.forEach(note => {
-      const mentionRegex = /@\[\[([\w\s]+)\|([\w-]+)\]\]/g;
+      // Look for [[Note Title|noteId]] pattern in content
+      const linkRegex = /\[\[(.*?)\|(.*?)\]\]/g;
       let match;
-      while ((match = mentionRegex.exec(note.content)) !== null) {
-        const targetNoteId = match[2];
-        if (notes.find(n => n.id === targetNoteId)) {
-          links.push({ source: note.id, target: targetNoteId });
+      
+      while ((match = linkRegex.exec(note.content)) !== null) {
+        const linkedNoteId = match[2];
+        
+        // Check if the linked note exists in our notes array
+        if (notes.some(n => n.id === linkedNoteId)) {
+          graphEdges.push({
+            id: `${note.id}-${linkedNoteId}`,
+            source: note.id,
+            target: linkedNoteId,
+            animated: false,
+            style: { stroke: '#9E86ED' }
+          });
         }
       }
     });
 
-    setGraphData({ nodes, links });
-  }, [notes]);
+    setNodes(graphNodes);
+    setEdges(graphEdges);
+  }, [notes, setNodes, setEdges]);
 
-  // Since we can't use ForceGraph directly (it's not available in recharts),
-  // let's create a simple visualization using a standard chart
-  const processedData = graphData.nodes.map(node => {
-    // Count connections for this node
-    const connections = graphData.links.filter(
-      link => link.source === node.id || link.target === node.id
-    ).length;
-    
-    return {
-      id: node.id,
-      name: node.name,
-      connections: connections
-    };
-  }).sort((a, b) => b.connections - a.connections);
+  const onConnect = useCallback(
+    (connection: Connection) => setEdges(eds => addEdge(connection, eds)),
+    [setEdges]
+  );
 
-  const handleNodeClick = (data: any) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const nodeData = data.activePayload[0].payload;
-      onSelectNote(nodeData.id);
-      toast({
-        title: "Note selected",
-        description: `Opened ${nodeData.name}`,
-      });
-    }
+  const onNodeClick = (_: React.MouseEvent, node: any) => {
+    onSelectNote(node.data.noteId);
+    toast({
+      title: "Note selected",
+      description: `Opened ${node.data.label}`,
+    });
   };
 
   return (
     <div className="h-full w-full flex flex-col">
-      <h2 className="text-xl font-semibold mb-4">Knowledge Graph</h2>
       <div className="flex-1 border border-border rounded-md bg-card p-4">
         {notes.length > 1 ? (
-          <ResponsiveContainer width="100%" height={500}>
-            <LineChart 
-              data={processedData} 
-              margin={{top: 20, right: 30, left: 20, bottom: 70}}
-              onClick={handleNodeClick}
+          <div style={{ height: 500 }}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+              fitView
+              attributionPosition="bottom-right"
             >
-              <XAxis 
-                dataKey="name" 
-                angle={-45}
-                textAnchor="end"
-                height={80}
-              />
-              <YAxis 
-                label={{ value: 'Connections', angle: -90, position: 'insideLeft' }}
-              />
-              <Tooltip formatter={(value, name, props) => [`${value} connections`, 'Connections']} />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="connections" 
-                stroke="#8884d8" 
-                activeDot={{ r: 8 }} 
-              />
-            </LineChart>
-          </ResponsiveContainer>
+              <Controls />
+              <MiniMap />
+              <Background color="#aaa" gap={16} />
+            </ReactFlow>
+          </div>
         ) : (
           <div className="h-full flex items-center justify-center text-muted-foreground">
             Need at least 2 notes to visualize connections.

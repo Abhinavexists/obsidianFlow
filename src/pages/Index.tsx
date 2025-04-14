@@ -5,8 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import NoteEditor from '@/components/NoteEditor';
 import { Note } from '@/types/note';
 import noteService from '@/services/noteService';
-import { useNavigate } from 'react-router-dom';
-import GraphVisualizer from '@/components/GraphVisualizer';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Index: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -14,14 +13,23 @@ const Index: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchNotes = async () => {
       setIsLoading(true);
       try {
-        const fetchedNotes = await noteService.getAllNotes(); // Fixed: getNotes -> getAllNotes
+        const fetchedNotes = await noteService.getAllNotes();
         setNotes(fetchedNotes);
+        
+        // If there's a selectedNoteId in the location state, select that note
+        if (location.state?.selectedNoteId) {
+          const note = fetchedNotes.find(n => n.id === location.state.selectedNoteId);
+          if (note) {
+            setSelectedNote(note);
+          }
+        }
       } catch (error) {
         toast({
           title: "Error fetching notes",
@@ -35,7 +43,7 @@ const Index: React.FC = () => {
     };
 
     fetchNotes();
-  }, []);
+  }, [toast, location.state]);
 
   const handleSelectNote = (noteId: string) => {
     const note = notes.find((note) => note.id === noteId);
@@ -107,7 +115,7 @@ const Index: React.FC = () => {
     <div className="flex h-screen bg-background">
       <Sidebar 
         notes={notes}
-        selectedNoteId={selectedNote?.id || null} // Fixed: selectedNote -> selectedNoteId
+        selectedNoteId={selectedNote?.id || null}
         onNoteSelect={handleSelectNote}
         onCreateNote={handleCreateNote}
         searchQuery={searchQuery}
@@ -117,14 +125,13 @@ const Index: React.FC = () => {
         isLoading={isLoading}
         isMobile={false}
         isOpen={true}
-        onToggle={() => {}} // Added required prop
+        onToggle={() => {}}
       />
       <div className="flex-1 overflow-auto">
         {selectedNote ? (
           <NoteEditor 
             note={selectedNote} 
             onSave={handleUpdateNote}
-            // Removed onDelete prop since it doesn't exist in NoteEditorProps
           />
         ) : (
           <div className="h-full flex items-center justify-center text-muted-foreground">
