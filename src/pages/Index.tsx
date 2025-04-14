@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/Sidebar';
@@ -13,13 +14,13 @@ const Index: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
-  const toast = useToast();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchNotes = async () => {
       setIsLoading(true);
       try {
-        const fetchedNotes = await noteService.getNotes();
+        const fetchedNotes = await noteService.getAllNotes(); // Fixed: getNotes -> getAllNotes
         setNotes(fetchedNotes);
       } catch (error) {
         toast({
@@ -106,21 +107,24 @@ const Index: React.FC = () => {
     <div className="flex h-screen bg-background">
       <Sidebar 
         notes={notes}
-        selectedNote={selectedNote}
-        onSelectNote={handleSelectNote}
+        selectedNoteId={selectedNote?.id || null} // Fixed: selectedNote -> selectedNoteId
+        onNoteSelect={handleSelectNote}
         onCreateNote={handleCreateNote}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         filteredNotes={filteredNotes}
         onDeleteNote={handleDeleteNote}
         isLoading={isLoading}
+        isMobile={false}
+        isOpen={true}
+        onToggle={() => {}} // Added required prop
       />
       <div className="flex-1 overflow-auto">
         {selectedNote ? (
           <NoteEditor 
             note={selectedNote} 
             onSave={handleUpdateNote}
-            onDelete={handleDeleteNote}
+            // Removed onDelete prop since it doesn't exist in NoteEditorProps
           />
         ) : (
           <div className="h-full flex items-center justify-center text-muted-foreground">

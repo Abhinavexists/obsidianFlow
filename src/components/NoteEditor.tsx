@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Save, Eye, Edit, Hash, Plus, Wand, Lightbulb, FileText, Check, Search, Link, Sparkles } from 'lucide-react';
+import { Save, Eye, Edit, Hash, Plus, Wand, Lightbulb, FileText, Check, Search, Link, Sparkles, Trash2 } from 'lucide-react';
 import { Note } from '@/types/note';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from "@/hooks/use-toast";
@@ -14,13 +14,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface NoteEditorProps {
   note: Note | null;
   onSave: (note: Note) => void;
+  onDelete?: (noteId: string) => void; // Make onDelete optional
 }
 
-const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
+const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave, onDelete }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -230,6 +242,12 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
     }
   };
   
+  const handleDeleteNote = () => {
+    if (note && onDelete) {
+      onDelete(note.id);
+    }
+  };
+  
   if (!note) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -291,6 +309,38 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ note, onSave }) => {
             {isPreview ? <Edit size={16} className="mr-1" /> : <Eye size={16} className="mr-1" />}
             {isPreview ? 'Edit' : 'Preview'}
           </Button>
+          
+          {/* Add delete button with alert dialog */}
+          {onDelete && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 size={16} className="mr-1" /> Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Note</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this note? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDeleteNote}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           
           <Button
             onClick={handleSave}

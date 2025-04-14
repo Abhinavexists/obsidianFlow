@@ -39,6 +39,10 @@ interface SidebarProps {
   onNoteSelect: (id: string) => void;
   onCreateNote: () => void;
   onDeleteNote: (id: string) => void;
+  searchQuery: string;
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  filteredNotes: Note[];
+  isLoading: boolean;
   isMobile: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -50,11 +54,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNoteSelect,
   onCreateNote,
   onDeleteNote,
+  searchQuery,
+  setSearchQuery,
+  filteredNotes,
+  isLoading,
   isMobile,
   isOpen,
   onToggle
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [useAiSearch, setUseAiSearch] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
@@ -73,22 +80,22 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   // Basic search function
   const basicSearch = () => {
-    if (!searchTerm.trim()) return notes;
+    if (!searchQuery.trim()) return notes;
     
     return notes.filter(note => {
       const contentToSearch = `${note.title} ${note.content} ${note.tags.join(' ')}`.toLowerCase();
-      return contentToSearch.includes(searchTerm.toLowerCase());
+      return contentToSearch.includes(searchQuery.toLowerCase());
     });
   };
   
   // AI-enhanced search
   const handleSearch = async () => {
-    if (!searchTerm.trim()) return;
+    if (!searchQuery.trim()) return;
     
     if (useAiSearch) {
       try {
         setIsSearching(true);
-        await noteService.smartSearch(searchTerm);
+        await noteService.smartSearch(searchQuery);
         // Results are handled in filteredNotes
       } catch (error) {
         console.error("AI search error:", error);
@@ -105,34 +112,34 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // Use state to hold filtered notes
-  const [filteredNotes, setFilteredNotes] = useState<Note[]>(notes);
+  const [internalFilteredNotes, setInternalFilteredNotes] = useState<Note[]>(notes);
 
   // Update filtered notes when search changes or notes change
   React.useEffect(() => {
     const updateFilteredNotes = async () => {
-      if (!searchTerm.trim()) {
-        setFilteredNotes(notes);
+      if (!searchQuery.trim()) {
+        setInternalFilteredNotes(notes);
         return;
       }
       
       if (useAiSearch) {
         try {
           setIsSearching(true);
-          const aiResults = await noteService.smartSearch(searchTerm);
-          setFilteredNotes(aiResults);
+          const aiResults = await noteService.smartSearch(searchQuery);
+          setInternalFilteredNotes(aiResults);
         } catch (error) {
           console.error("AI search error:", error);
-          setFilteredNotes(basicSearch());
+          setInternalFilteredNotes(basicSearch());
         } finally {
           setIsSearching(false);
         }
       } else {
-        setFilteredNotes(basicSearch());
+        setInternalFilteredNotes(basicSearch());
       }
     };
     
     updateFilteredNotes();
-  }, [searchTerm, notes, useAiSearch]);
+  }, [searchQuery, notes, useAiSearch]);
 
   // Extract all unique tags from notes
   const allTags = Array.from(
@@ -177,8 +184,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             type="text"
             placeholder="Search..."
             className="pl-8 bg-background"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
         </div>
@@ -276,7 +283,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   ))
                 ) : (
                   <div className="text-sm text-muted-foreground p-2">
-                    {searchTerm ? 'No matching notes' : 'No notes yet'}
+                    {searchQuery ? 'No matching notes' : 'No notes yet'}
                   </div>
                 )}
               </div>
