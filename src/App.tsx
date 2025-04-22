@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -14,6 +13,9 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import SettingsPage from "./pages/SettingsPage";
 import GraphPage from "./pages/GraphPage";
+import Features from "./pages/Features";
+import Pricing from "./pages/Pricing";
+import About from "./pages/About";
 import { useAuth } from "./contexts/AuthContext";
 
 // Create a client
@@ -36,6 +38,9 @@ const AppRoutes = () => {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/features" element={<Features />} />
+      <Route path="/pricing" element={<Pricing />} />
+      <Route path="/about" element={<About />} />
       <Route path="/app" element={<ProtectedRoute element={<Index />} />} />
       <Route path="/app/settings" element={<ProtectedRoute element={<SettingsPage />} />} />
       <Route path="/app/graph" element={<ProtectedRoute element={<GraphPage />} />} />
